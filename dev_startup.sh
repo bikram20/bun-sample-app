@@ -44,19 +44,32 @@
 # restarts when needed.
 #
 set -euo pipefail
-cd "$(dirname "$0")"
+
+# Change to workspace directory (where the app repo is cloned)
+cd "${WORKSPACE_PATH:-/workspaces/app}"
 
 # Install Bun if not already installed
 if ! command -v bun &> /dev/null; then
   echo "Installing Bun..."
   curl -fsSL https://bun.sh/install | bash
-  export PATH="$HOME/.bun/bin:$PATH"
-  # Also add to current shell session
-  [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+  # Bun installer adds to ~/.bun/bin, ensure it's in PATH
+  export BUN_INSTALL="$HOME/.bun"
+  export PATH="$BUN_INSTALL/bin:$PATH"
+  # Source Bun's environment if available
+  [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun" || true
 fi
 
-# Ensure Bun is in PATH
-export PATH="$HOME/.bun/bin:$PATH"
+# Ensure Bun is in PATH (in case it was already installed)
+export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Verify Bun is available
+if ! command -v bun &> /dev/null; then
+  echo "ERROR: Bun installation failed or not in PATH"
+  exit 1
+fi
+
+echo "Bun version: $(bun --version)"
 
 # Files to watch for dependency changes
 WATCH_FILES=("package.json" "bun.lockb")
@@ -75,7 +88,8 @@ hash_files | sha256sum | awk '{print $1}' > "$HASH_FILE"
 # Background watcher function that monitors dependency files
 watch_dependencies() {
   # Ensure Bun is in PATH for this function
-  export PATH="$HOME/.bun/bin:$PATH"
+  export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
+  export PATH="$BUN_INSTALL/bin:$PATH"
   while true; do
     sleep 10  # Check every 10 seconds
     current=$(hash_files | sha256sum | awk '{print $1}')
