@@ -1,0 +1,56 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+ingress:
+  rules:
+  - component:
+      name: dev-workspace-bun
+    match:
+      path:
+        prefix: /
+name: bun-sample-app
+region: syd
+services:
+- dockerfile_path: /Dockerfile
+  envs:
+  - key: GITHUB_REPO_URL
+    scope: RUN_AND_BUILD_TIME
+    value: https://github.com/bikram20/bun-sample-app
+  - key: INSTALL_NODE
+    scope: RUN_AND_BUILD_TIME
+    value: "true"
+  - key: INSTALL_PYTHON
+    scope: RUN_AND_BUILD_TIME
+    value: "false"
+  - key: INSTALL_GOLANG
+    scope: RUN_AND_BUILD_TIME
+    value: "false"
+  - key: INSTALL_RUST
+    scope: RUN_AND_BUILD_TIME
+    value: "false"
+  - key: RUN_COMMAND
+    scope: RUN_AND_BUILD_TIME
+    value: bash dev_startup.sh
+  - key: GITHUB_SYNC_INTERVAL
+    scope: RUN_AND_BUILD_TIME
+    value: "30"
+  - key: ENABLE_DEV_HEALTH
+    scope: RUN_AND_BUILD_TIME
+    value: "false"
+  github:
+    branch: main
+    repo: bikram20/appdev-template
+  health_check:
+    failure_threshold: 5
+    http_path: /health
+    initial_delay_seconds: 30
+    period_seconds: 10
+    port: 8080
+    success_threshold: 1
+    timeout_seconds: 5
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: apps-d-1vcpu-1gb
+  name: dev-workspace-bun
+  source_dir: /
+
