@@ -46,12 +46,23 @@
 set -euo pipefail
 
 # Change to workspace directory (where the app repo is cloned)
-cd "${WORKSPACE_PATH:-/workspaces/app}"
+WORKSPACE="${WORKSPACE_PATH:-/workspaces/app}"
+echo "Changing to workspace: $WORKSPACE"
+cd "$WORKSPACE" || {
+  echo "ERROR: Failed to change to workspace directory: $WORKSPACE"
+  exit 1
+}
+
+echo "Current directory: $(pwd)"
+echo "Contents: $(ls -la)"
 
 # Install Bun if not already installed
 if ! command -v bun &> /dev/null; then
   echo "Installing Bun..."
-  curl -fsSL https://bun.sh/install | bash
+  curl -fsSL https://bun.sh/install | bash || {
+    echo "ERROR: Bun installation failed"
+    exit 1
+  }
   # Bun installer adds to ~/.bun/bin, ensure it's in PATH
   export BUN_INSTALL="$HOME/.bun"
   export PATH="$BUN_INSTALL/bin:$PATH"
@@ -66,6 +77,9 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 # Verify Bun is available
 if ! command -v bun &> /dev/null; then
   echo "ERROR: Bun installation failed or not in PATH"
+  echo "PATH: $PATH"
+  echo "BUN_INSTALL: $BUN_INSTALL"
+  ls -la "$BUN_INSTALL/bin/" || echo "Bun bin directory does not exist"
   exit 1
 fi
 
