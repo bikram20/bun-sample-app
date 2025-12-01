@@ -122,22 +122,23 @@ hash_files | sha256sum | awk '{print $1}' > "$HASH_FILE" || echo "0" > "$HASH_FI
 
 # Background watcher function that monitors dependency files
 watch_dependencies() {
+  # Ensure we're in the right directory
+  cd "$WORKSPACE" || cd "${WORKSPACE_PATH:-/workspaces/app}"
   # Ensure Bun is in PATH for this function
   export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
   export PATH="$BUN_INSTALL/bin:$PATH"
+  echo "[WATCHER] Started monitoring package.json and bun.lockb" >&2
   while true; do
     sleep 10  # Check every 10 seconds
     current=$(hash_files | sha256sum | awk '{print $1}')
-    previous=$(cat "$HASH_FILE" 2>/dev/null || true)
-    if [ "$current" != "$previous" ]; then
-      echo "[WATCHER] Dependencies changed. Re-installing..."
-      bun install
+    previous=$(cat "$HASH_FILE" 2>/dev/null || echo "")
+    if [ "$current" != "$previous" ] && [ -n "$current" ]; then
+      echo "[WATCHER] Dependencies changed. Re-installing..." >&2
+      bun install >&2
       echo "$current" > "$HASH_FILE"
-      # Kill Bun to trigger restart by outer loop
-      if [ -n "${BUN_PID:-}" ]; then
-        echo "[WATCHER] Killing Bun (PID: $BUN_PID) to restart..."
-        kill "$BUN_PID" 2>/dev/null || true
-      fi
+      # Kill Bun to trigger restart by outer loop - find by process name
+      pkill -f "bun.*index.ts" >&2 2>/dev/null || true
+      echo "[WATCHER] Bun process killed, will restart..." >&2
     fi
   done
 }
