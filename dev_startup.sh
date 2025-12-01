@@ -127,18 +127,21 @@ watch_dependencies() {
   # Ensure Bun is in PATH for this function
   export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
   export PATH="$BUN_INSTALL/bin:$PATH"
-  echo "[WATCHER] Started monitoring package.json and bun.lockb" >&2
+  echo "[WATCHER] Started monitoring package.json and bun.lockb"
   while true; do
     sleep 10  # Check every 10 seconds
     current=$(hash_files | sha256sum | awk '{print $1}')
     previous=$(cat "$HASH_FILE" 2>/dev/null || echo "")
     if [ "$current" != "$previous" ] && [ -n "$current" ]; then
-      echo "[WATCHER] Dependencies changed. Re-installing..." >&2
-      bun install >&2
+      echo "[WATCHER] Dependencies changed. Re-installing..."
+      echo "[WATCHER] Previous hash: $previous"
+      echo "[WATCHER] Current hash: $current"
+      bun install
       echo "$current" > "$HASH_FILE"
       # Kill Bun to trigger restart by outer loop - find by process name
-      pkill -f "bun.*index.ts" >&2 2>/dev/null || true
-      echo "[WATCHER] Bun process killed, will restart..." >&2
+      echo "[WATCHER] Killing Bun process to trigger restart..."
+      pkill -f "bun.*index.ts" 2>/dev/null || true
+      sleep 1
     fi
   done
 }
