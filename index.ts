@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { format, formatDistanceToNow } from 'date-fns';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+import _ from 'lodash';
 
 const port = parseInt(process.env.PORT || '8080', 10);
 
@@ -100,6 +101,44 @@ async function randomIdHandler(req: Request): Promise<Response> {
   );
 }
 
+// Utils endpoint - uses lodash for utility functions
+async function utilsHandler(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const action = url.searchParams.get('action') || 'shuffle';
+  const input = url.searchParams.get('input') || '1,2,3,4,5';
+  
+  const arr = input.split(',').map(s => s.trim());
+  let result;
+  
+  switch (action) {
+    case 'shuffle':
+      result = _.shuffle(arr);
+      break;
+    case 'chunk':
+      const size = parseInt(url.searchParams.get('size') || '2', 10);
+      result = _.chunk(arr, size);
+      break;
+    case 'unique':
+      result = _.uniq(arr);
+      break;
+    default:
+      result = arr;
+  }
+  
+  return new Response(
+    JSON.stringify({
+      action: action,
+      input: arr,
+      result: result,
+      library: 'lodash',
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+}
+
 // Validate endpoint - uses zod for schema validation
 async function validateHandler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
@@ -171,6 +210,8 @@ async function handleRequest(req: Request): Promise<Response> {
     return randomIdHandler(req);
   } else if (path === '/validate') {
     return validateHandler(req);
+  } else if (path === '/utils') {
+    return utilsHandler(req);
   } else if (path === '/') {
     return rootHandler(req);
   } else {
