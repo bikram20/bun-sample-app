@@ -3,6 +3,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import _ from 'lodash';
+import CryptoJS from 'crypto-js';
 
 const port = parseInt(process.env.PORT || '8080', 10);
 
@@ -99,6 +100,47 @@ async function randomIdHandler(req: Request): Promise<Response> {
       headers: { 'Content-Type': 'application/json' },
     }
   );
+}
+
+// Encrypt endpoint - uses crypto-js for encryption
+async function encryptHandler(req: Request): Promise<Response> {
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed. Use POST.' }),
+      {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+  
+  try {
+    const body = await req.json();
+    const text = body.text || '';
+    const key = body.key || 'default-key';
+    
+    const encrypted = CryptoJS.AES.encrypt(text, key).toString();
+    
+    return new Response(
+      JSON.stringify({
+        original: text,
+        encrypted: encrypted,
+        algorithm: 'AES',
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid JSON' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
 }
 
 // Utils endpoint - uses lodash for utility functions
@@ -212,6 +254,8 @@ async function handleRequest(req: Request): Promise<Response> {
     return validateHandler(req);
   } else if (path === '/utils') {
     return utilsHandler(req);
+  } else if (path === '/encrypt') {
+    return encryptHandler(req);
   } else if (path === '/') {
     return rootHandler(req);
   } else {
