@@ -11,7 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {}
 }

@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { format, formatDistanceToNow } from 'date-fns';
 
 const port = parseInt(process.env.PORT || '8080', 10);
 
@@ -62,6 +63,23 @@ async function echoHandler(req: Request): Promise<Response> {
   );
 }
 
+// Time endpoint - uses date-fns for formatted dates
+async function timeHandler(req: Request): Promise<Response> {
+  const now = new Date();
+  return new Response(
+    JSON.stringify({
+      iso: now.toISOString(),
+      formatted: format(now, 'PPpp'), // Pretty format: "Dec 1, 2025 at 12:00 AM"
+      relative: formatDistanceToNow(now, { addSuffix: true }), // "in a few seconds"
+      unix: Math.floor(now.getTime() / 1000),
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+}
+
 // Main router
 async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -73,6 +91,8 @@ async function handleRequest(req: Request): Promise<Response> {
     return infoHandler(req);
   } else if (path === '/echo') {
     return echoHandler(req);
+  } else if (path === '/time') {
+    return timeHandler(req);
   } else if (path === '/') {
     return rootHandler(req);
   } else {
