@@ -122,26 +122,36 @@ hash_files | sha256sum | awk '{print $1}' > "$HASH_FILE" || echo "0" > "$HASH_FI
 
 # Background watcher function that monitors dependency files
 watch_dependencies() {
-  # Ensure we're in the right directory
-  cd "$WORKSPACE" || cd "${WORKSPACE_PATH:-/workspaces/app}"
+  # Set workspace directory (use absolute path)
+  local WATCH_DIR="${WORKSPACE_PATH:-/workspaces/app}"
+  local HASH_FILE_PATH="$WATCH_DIR/.deps_hash"
+  
   # Ensure Bun is in PATH for this function
   export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
   export PATH="$BUN_INSTALL/bin:$PATH"
-  echo "[WATCHER] Started monitoring package.json and bun.lockb"
+  
+  echo "[WATCHER] Started monitoring package.json and bun.lockb in $WATCH_DIR"
+  
   while true; do
     sleep 10  # Check every 10 seconds
+    cd "$WATCH_DIR" || continue
     current=$(hash_files | sha256sum | awk '{print $1}')
-    previous=$(cat "$HASH_FILE" 2>/dev/null || echo "")
-    if [ "$current" != "$previous" ] && [ -n "$current" ]; then
-      echo "[WATCHER] Dependencies changed. Re-installing..."
-      echo "[WATCHER] Previous hash: $previous"
-      echo "[WATCHER] Current hash: $current"
-      bun install
-      echo "$current" > "$HASH_FILE"
-      # Kill Bun to trigger restart by outer loop - find by process name
-      echo "[WATCHER] Killing Bun process to trigger restart..."
-      pkill -f "bun.*index.ts" 2>/dev/null || true
-      sleep 1
+    previous=$(cat "$HASH_FILE_PATH" 2>/dev/null || echo "")
+    
+    # Debug: log hash comparison (only when different to reduce noise)
+    if [ "$current" != "$previous" ]; then
+      if [ -n "$current" ]; then
+        echo "[WATCHER] Dependencies changed detected!"
+        echo "[WATCHER] Previous hash: ${previous:-'(empty)'}"
+        echo "[WATCHER] Current hash: $current"
+        echo "[WATCHER] Re-installing dependencies..."
+        bun install
+        echo "$current" > "$HASH_FILE_PATH"
+        # Kill Bun to trigger restart by outer loop
+        echo "[WATCHER] Killing Bun process to trigger restart..."
+        pkill -f "bun.*index.ts" 2>/dev/null || true
+        sleep 1
+      fi
     fi
   done
 }
