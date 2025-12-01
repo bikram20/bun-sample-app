@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { format, formatDistanceToNow } from 'date-fns';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 const port = parseInt(process.env.PORT || '8080', 10);
 
@@ -99,6 +100,60 @@ async function randomIdHandler(req: Request): Promise<Response> {
   );
 }
 
+// Validate endpoint - uses zod for schema validation
+async function validateHandler(req: Request): Promise<Response> {
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed. Use POST.' }),
+      {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+  
+  try {
+    const body = await req.json();
+    const schema = z.object({
+      email: z.string().email(),
+      age: z.number().int().min(18).max(120),
+    });
+    
+    const validated = schema.parse(body);
+    return new Response(
+      JSON.stringify({
+        valid: true,
+        data: validated,
+        message: 'Validation successful',
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          errors: error.errors,
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    return new Response(
+      JSON.stringify({ error: 'Invalid JSON' }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
 // Main router
 async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -114,6 +169,8 @@ async function handleRequest(req: Request): Promise<Response> {
     return timeHandler(req);
   } else if (path === '/random-id') {
     return randomIdHandler(req);
+  } else if (path === '/validate') {
+    return validateHandler(req);
   } else if (path === '/') {
     return rootHandler(req);
   } else {
