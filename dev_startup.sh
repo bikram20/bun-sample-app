@@ -95,9 +95,30 @@ hash_files() {
   done
 }
 
+# Wait for package.json to exist (git sync might still be in progress)
+echo "Waiting for package.json to be available..."
+for i in {1..30}; do
+  if [ -f "package.json" ]; then
+    echo "package.json found!"
+    break
+  fi
+  echo "Waiting... ($i/30)"
+  sleep 2
+done
+
+if [ ! -f "package.json" ]; then
+  echo "ERROR: package.json not found after waiting. Listing directory contents:"
+  ls -la
+  exit 1
+fi
+
 echo "Installing dependencies (bun install)..."
-bun install
-hash_files | sha256sum | awk '{print $1}' > "$HASH_FILE"
+bun install || {
+  echo "WARNING: bun install failed, but continuing..."
+  # Create empty hash file so script can continue
+  touch "$HASH_FILE"
+}
+hash_files | sha256sum | awk '{print $1}' > "$HASH_FILE" || echo "0" > "$HASH_FILE"
 
 # Background watcher function that monitors dependency files
 watch_dependencies() {
