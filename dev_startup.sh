@@ -125,6 +125,15 @@ watch_dependencies() {
   # Set workspace directory (use absolute path)
   local WATCH_DIR="${WORKSPACE_PATH:-/workspaces/app}"
   local HASH_FILE_PATH="$WATCH_DIR/.deps_hash"
+  local WATCH_FILES=("package.json" "bun.lockb")
+  
+  # Define hash function inside watcher
+  hash_files() {
+    cd "$WATCH_DIR" || return 1
+    for f in "${WATCH_FILES[@]}"; do
+      [ -f "$f" ] && sha256sum "$f" 2>/dev/null
+    done
+  }
   
   # Ensure Bun is in PATH for this function
   export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
@@ -135,6 +144,7 @@ watch_dependencies() {
   while true; do
     sleep 10  # Check every 10 seconds
     cd "$WATCH_DIR" || continue
+    
     current=$(hash_files | sha256sum | awk '{print $1}')
     previous=$(cat "$HASH_FILE_PATH" 2>/dev/null || echo "")
     
