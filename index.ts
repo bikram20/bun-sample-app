@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { format, formatDistanceToNow } from 'date-fns';
+import { nanoid } from 'nanoid';
 
 const port = parseInt(process.env.PORT || '8080', 10);
 
@@ -80,6 +81,24 @@ async function timeHandler(req: Request): Promise<Response> {
   );
 }
 
+// Random ID endpoint - uses nanoid for short, URL-safe IDs
+async function randomIdHandler(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const size = parseInt(url.searchParams.get('size') || '21', 10);
+  return new Response(
+    JSON.stringify({
+      id: nanoid(size),
+      size: size,
+      type: 'nanoid',
+      note: 'Short, URL-safe random ID',
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+}
+
 // Main router
 async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -93,6 +112,8 @@ async function handleRequest(req: Request): Promise<Response> {
     return echoHandler(req);
   } else if (path === '/time') {
     return timeHandler(req);
+  } else if (path === '/random-id') {
+    return randomIdHandler(req);
   } else if (path === '/') {
     return rootHandler(req);
   } else {
